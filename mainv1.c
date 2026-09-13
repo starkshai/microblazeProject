@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- *  Created on: 2026Äê9ÔÂ11ÈÕ
+ *  Created on: 2026å¹´9æœˆ11æ—¥
  *      Author: sjtu
  */
 
@@ -32,7 +32,7 @@ int main(void)
 
 		xil_printf("Successfully ran Spi lowlevel Example\r\n");
 
-		/* ´òÓ¡ RX FIFO ¶Áµ½µÄÈ«²¿×Ö½Ú */
+		/* æ‰“å° RX FIFO è¯»åˆ°çš„å…¨éƒ¨å­—èŠ‚ */
 		xil_printf("---- RX Buffer (%d bytes) ----\r\n", BUFFER_SIZE);
 		for (int i = 0; i < BUFFER_SIZE; i++) {
 		    xil_printf("RxBuffer[%d] = 0x%02X\r\n", i, RxBuffer[i]);
@@ -51,7 +51,7 @@ int XSpi_LowLevelExample(u32 BaseAddress)
 	 */
 	Control = XSpi_ReadReg(BaseAddress, XSP_CR_OFFSET);
 	Control |= XSP_CR_MASTER_MODE_MASK;
-	Control &= ~(XSP_CR_MANUAL_SS_MASK | XSP_CR_LOOPBACK_MASK); // È·±£ÊÖ¶¯Æ¬Ñ¡ºÍ»Ø»·¶¼¹Ø±Õ
+	Control &= ~(XSP_CR_MANUAL_SS_MASK | XSP_CR_LOOPBACK_MASK); // ç¡®ä¿æ‰‹åŠ¨ç‰‡é€‰å’Œå›ç¯éƒ½å…³é—­
 	Control |= XSP_CR_TRANS_INHIBIT_MASK;
 	XSpi_WriteReg(BaseAddress, XSP_CR_OFFSET, Control);
 
@@ -63,7 +63,7 @@ int XSpi_LowLevelExample(u32 BaseAddress)
 	Buffer[1] = 0x00;
 	Buffer[2] = 0x00;
 
-	/* 3. ×Ô¶¯Æ¬Ñ¡Ä£Ê½ÏÂ£¬Ñ¡Ôñ´Ó»ú SS0£¨µÍÓĞĞ§£¬bit0=0£© */
+	/* 3. è‡ªåŠ¨ç‰‡é€‰æ¨¡å¼ä¸‹ï¼Œé€‰æ‹©ä»æœº SS0ï¼ˆä½æœ‰æ•ˆï¼Œbit0=0ï¼‰ */
 	XSpi_WriteReg(BaseAddress, XSP_SSR_OFFSET, 0xFFFFFFFE);
 
 	/*
@@ -74,7 +74,7 @@ int XSpi_LowLevelExample(u32 BaseAddress)
 	Control &= ~XSP_CR_TRANS_INHIBIT_MASK;
 	XSpi_WriteReg(BaseAddress, XSP_CR_OFFSET, Control);
 
-	/* 3. Ğ´ÈëÁ½¸öÊı¾İµ½·¢ËÍ FIFO */
+	/* 3. å†™å…¥ä¸¤ä¸ªæ•°æ®åˆ°å‘é€ FIFO */
 	for (i = 0; i < BUFFER_SIZE; i++) {
 	    while (XSpi_ReadReg(BaseAddress, XSP_SR_OFFSET) & XSP_SR_TX_FULL_MASK);
 	        XSpi_WriteReg(BaseAddress, XSP_DTR_OFFSET, Buffer[i]);
@@ -87,7 +87,7 @@ int XSpi_LowLevelExample(u32 BaseAddress)
 	 */
 	while (!(XSpi_ReadReg(BaseAddress, XSP_SR_OFFSET) & XSP_SR_TX_EMPTY_MASK));
 
-	/* 7. ´Ó RX FIFO ¶Á³öËùÓĞ»Ø´«µÄÊı¾İ */
+	/* 7. ä» RX FIFO è¯»å‡ºæ‰€æœ‰å›ä¼ çš„æ•°æ® */
 	for (i = 0; i < BUFFER_SIZE; i++) {
 	    while (XSpi_ReadReg(BaseAddress, XSP_SR_OFFSET) & XSP_SR_RX_EMPTY_MASK);
 	        RxBuffer[i] = XSpi_ReadReg(BaseAddress, XSP_DRR_OFFSET) & 0xFF;
