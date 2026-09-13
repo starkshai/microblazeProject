@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- *  Created on: 2026Äê9ÔÂ13ÈÕ
+ *  Created on: 2026å¹´9æœˆ13æ—¥
  *      Author: sjtu
  */
 
@@ -18,13 +18,13 @@
 u8 TxBuffer[FRAME_SIZE];
 u8 RxBuffer[FRAME_SIZE];
 
-// UART½ÓÊÕ1×Ö½Ú£¨×èÈûÊ½£©
+// UARTæ¥æ”¶1å­—èŠ‚ï¼ˆé˜»å¡å¼ï¼‰
 u8 uart_recv_byte(void) {
-    while (XUartLite_IsReceiveEmpty(UART_BASEADDR)); // µÈ´ı½ÓÊÕFIFO·Ç¿Õ
+    while (XUartLite_IsReceiveEmpty(UART_BASEADDR)); // ç­‰å¾…æ¥æ”¶FIFOéç©º
     return XUartLite_RecvByte(UART_BASEADDR);
 }
 
-// UART·¢ËÍ1×Ö½Ú£¨×èÈûÊ½£©
+// UARTå‘é€1å­—èŠ‚ï¼ˆé˜»å¡å¼ï¼‰
 void uart_send_byte(u8 data) {
     XUartLite_SendByte(UART_BASEADDR, data);
 }
@@ -33,32 +33,32 @@ int spi_transfer(u32 BaseAddress, u8 *tx, u8 *rx, int len) {
     u32 Control;
     int i;
 
-    // 1. ÅäÖÃÎªÖ÷»úÄ£Ê½¡¢×Ô¶¯Æ¬Ñ¡¡¢½ûÖ¹»Ø»·
+    // 1. é…ç½®ä¸ºä¸»æœºæ¨¡å¼ã€è‡ªåŠ¨ç‰‡é€‰ã€ç¦æ­¢å›ç¯
     Control = XSpi_ReadReg(BaseAddress, XSP_CR_OFFSET);
     Control |= XSP_CR_MASTER_MODE_MASK;
     Control &= ~(XSP_CR_MANUAL_SS_MASK | XSP_CR_LOOPBACK_MASK);
     Control |= XSP_CR_TRANS_INHIBIT_MASK;
     XSpi_WriteReg(BaseAddress, XSP_CR_OFFSET, Control);
 
-    // 2. Ñ¡Ôñ´Ó»ú SS0
+    // 2. é€‰æ‹©ä»æœº SS0
     XSpi_WriteReg(BaseAddress, XSP_SSR_OFFSET, 0xFFFFFFFE);
 
-    // 3. Ê¹ÄÜ SPI ²¢ÔÊĞí´«Êä
+    // 3. ä½¿èƒ½ SPI å¹¶å…è®¸ä¼ è¾“
     Control = XSpi_ReadReg(BaseAddress, XSP_CR_OFFSET);
     Control |= XSP_CR_ENABLE_MASK;
     Control &= ~XSP_CR_TRANS_INHIBIT_MASK;
     XSpi_WriteReg(BaseAddress, XSP_CR_OFFSET, Control);
 
-    // 4. Ğ´ÈëÊı¾İ
+    // 4. å†™å…¥æ•°æ®
     for (i = 0; i < len; i++) {
         while (XSpi_ReadReg(BaseAddress, XSP_SR_OFFSET) & XSP_SR_TX_FULL_MASK);
         XSpi_WriteReg(BaseAddress, XSP_DTR_OFFSET, tx[i]);
     }
 
-    // 5. µÈ´ı·¢ËÍÍê³É
+    // 5. ç­‰å¾…å‘é€å®Œæˆ
     while (!(XSpi_ReadReg(BaseAddress, XSP_SR_OFFSET) & XSP_SR_TX_EMPTY_MASK));
 
-    // 6. ¶ÁÈ¡Êı¾İ
+    // 6. è¯»å–æ•°æ®
     for (i = 0; i < len; i++) {
         while (XSpi_ReadReg(BaseAddress, XSP_SR_OFFSET) & XSP_SR_RX_EMPTY_MASK);
         rx[i] = XSpi_ReadReg(BaseAddress, XSP_DRR_OFFSET) & 0xFF;
@@ -72,16 +72,16 @@ int main(void) {
     xil_printf("Send 3 bytes (CMD1 CMD2 DATA) to trigger SPI transfer.\r\n");
 
     while (1) {
-        // 1. ´Ó´®¿Ú¶ÁÈ¡3×Ö½Úµ½·¢ËÍ»º³å
+        // 1. ä»ä¸²å£è¯»å–3å­—èŠ‚åˆ°å‘é€ç¼“å†²
         for (i = 0; i < FRAME_SIZE; i++) {
             TxBuffer[i] = uart_recv_byte();
         }
         xil_printf("TX: %02X %02X %02X\r\n", TxBuffer[0], TxBuffer[1], TxBuffer[2]);
 
-        // 2. Ö´ĞĞSPI´«Êä
+        // 2. æ‰§è¡ŒSPIä¼ è¾“
         spi_transfer(SPI_BASEADDR, TxBuffer, RxBuffer, FRAME_SIZE);
 
-        // 3. ½«½ÓÊÕµ½µÄÊı¾İ»Ø´«µ½´®¿Ú
+        // 3. å°†æ¥æ”¶åˆ°çš„æ•°æ®å›ä¼ åˆ°ä¸²å£
         xil_printf("RX: %02X %02X %02X\r\n", RxBuffer[0], RxBuffer[1], RxBuffer[2]);
     }
     return XST_SUCCESS;
