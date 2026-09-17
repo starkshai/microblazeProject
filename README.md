@@ -29,6 +29,9 @@ This project implements a bridge between a standard 4-wire SPI interface (from t
 - **SpiItrp1.c**  
   An SDK application for MicroBlaze that acts as an interactive SPI bridge over UART. It waits for a 3-byte command frame (CMD1, CMD2, DATA) from the PC serial terminal, performs one SPI transfer in interrupt mode using the AXI Quad SPI core, and returns the 3 bytes received from the SPI slave back over UART. This makes it easy to debug SPI devices from a PC without rebuilding the hardware.
 
+- **SpiUartItrp.c**  
+  The latest code implements an interrupt-driven SPI bridge on MicroBlaze, using UART interrupts for reception into a ring buffer and SPI interrupts for transfers. The main loop waits until three bytes (`CMD1`, `CMD2`, `DATA`) are available, then starts one SPI transfer, and after the SPI interrupt signals completion, it prints the received three bytes back over UART. Slave 0 is selected with `XSpi_SetSlaveSelect(0x01)` to avoid the `XST_SPI_NO_SLAVE` error, enabling interactive PC-based debugging of SPI slaves through a serial terminal.
+
 ### PC Host Tools (Python)
 
 - **spi_debug.py**  
