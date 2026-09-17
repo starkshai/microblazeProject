@@ -26,8 +26,8 @@ This project implements a bridge between a standard 4-wire SPI interface (from t
 - **mainv2.c**  
   SDK application **with** UART download. It waits for 3 bytes from the UART, uses them as the SPI command frame (CMD1, CMD2, DATA), performs one SPI transfer, and returns the received data via UART. This allows interactive debugging from a PC.
   
-- **SpiItrp1.c** 
-  SpiItrp1.c is an SDK application for MicroBlaze that acts as an interactive SPI bridge over UART. It waits for a 3-byte command frame (CMD1, CMD2, DATA) from the PC serial terminal, performs one SPI transfer in interrupt mode using the AXI Quad SPI core, and returns the 3 bytes received from the SPI slave back over UART. This makes it easy to debug SPI devices from a PC without rebuilding the hardware.
+- **SpiItrp1.c**  
+  An SDK application for MicroBlaze that acts as an interactive SPI bridge over UART. It waits for a 3-byte command frame (CMD1, CMD2, DATA) from the PC serial terminal, performs one SPI transfer in interrupt mode using the AXI Quad SPI core, and returns the 3 bytes received from the SPI slave back over UART. This makes it easy to debug SPI devices from a PC without rebuilding the hardware.
 
 ### PC Host Tools (Python)
 
