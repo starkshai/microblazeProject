@@ -1,0 +1,127 @@
+DS18B20 ModelSim 仿真修改记录
+================================
+
+环境：ModelSim SE-64 10.4，Windows
+涉及文件：ds18b20z.v（DUT 驱动）、ds18b20_tb.v（测试平台）
+仿真结果：temp_data = 0x0191（25.0625°C），sign = 0，命令校验全部通过
+
+
+一、ds18b20_tb.v（测试平台）修改
+--------------------------------
+
+1. receive_byte 端口方向错误
+   原：output reg [7:0] data
+   改：input [7:0] expected
+   原因：调用处 receive_byte(8'hCC) 传入的是字面常量，
+        字面量不能作为 output 实参，编译报 "Illegal output port connection"。
+        该参数语义应为"期望接收到的字节"，故改为 input，
+        并新增局部变量 data 存放实际采样值，循环结束后比对预期，
+        不符则 $display 报错。
+
+2. us 时间单位字面量导致 vopt 优化失败
+   原：#30us / #120us / #100us / #5us / #40us
+   改：#30000 / #120000 / #100000 / #5000 / #40000
+   原因：timescale 为 1ns/1ps，ModelSim 10.4 优化器把 "us" 当成
+        层次名解析，报 "Failed to find 'us' in hierarchical name"。
+        统一换算为 ns 数值即可。
+
+3. send_temp 读时隙时序错位
+   原：#30000(保持) + #40000(等待) = 70us/位
+   改：仅 #30000(保持)，去掉末尾 #40000
+   原因：主机读位周期约 65us，从机每位耗时 70us，
+        在 #40000 期间错过下一个读时隙的 negedge，导致后续位错位。
+        修复后由循环顶部的 @(negedge dq) 自动同步下一时隙；
+        保持 30us 足够覆盖主机 ~15us 的采样点，裕量充足。
+
+
+二、ds18b20z.v（DUT）修改
+-------------------------
+
+1. 读移位方向错误（LSB 优先 vs MSB 优先）
+   原：rd_data <= {rd_data[14:0], dq};  // 左移，新位进 LSB
+   改：rd_data <= {dq, rd_data[15:1]};  // 右移，新位进 MSB
+   原因：DS18B20 为 LSB 先发，写侧用 wr_data[wr_cnt]（wr_cnt 0→7）
+        也是 LSB 先写，而读侧左移会使最先收到的 bit 最终落在最高位，
+        即 MSB 优先接收，导致读出的 16 位整体位反转
+        （期望 0x0191，实际读出 0x8980）。
+        改为右移后，新位移入 MSB，首位最终落在 LSB，符合协议。
+
+
+三、仿真命令
+------------
+
+1. 命令行快速仿真（无 GUI，仅看结果）
+   vlog ds18b20z.v ds18b20_tb.v
+   vsim -c -do "run -all; quit -f" tb_ds18b20_dri
+
+2. 打开 GUI 波形界面观察信号
+   vlog ds18b20z.v ds18b20_tb.v
+   vsim -voptargs=+acc -do wave.do tb_ds18b20_dri
+
+   说明：
+   - 必须加 -voptargs=+acc，否则 vopt 优化会隐藏内部信号，
+     add wave 报 "No objects found matching '/tb_ds18b20_dri/clk'"。
+   - wave.do 会自动把 TB 和 DUT 两组信号加入波形窗口，
+     运行完整仿真并缩放到全范围。
+
+3. ModelSim 已打开时在 Transcript 窗口操作
+   quit -sim
+   vlog ds18b20z.v ds18b20_tb.v
+   vsim -voptargs=+acc tb_ds18b20_dri
+   do wave.do
+
+   若修改了源码重跑：
+   restart -force
+   do wave.do
+
+
+四、wave.do 波形脚本说明
+------------------------
+
+TB 组信号：
+  clk        100MHz 系统时钟，周期 10ns
+  rst_n      复位信号，低有效
+  dq         1-Wire 总线（主机+从机共同驱动，开漏）
+  temp_data  最终读出的 16 位温度原始值
+  sign       温度符号位（0=正温，1=负温）
+  dq_slave_low  从机模型是否拉低 DQ（1=拉低，0=释放）
+
+DUT 组信号：
+  cur_state / next_state  当前/下一状态
+    1=init  2=rom_skip  3=wr_byte  4=temp_convert
+    5=delay 6=rd_temp   7=rd_byte
+  dq_out     主机驱动 DQ 的值（0=拉低，Z=释放）
+  clk_1us    1MHz 微秒时钟（内部时序基准）
+  cnt_1us    微秒计数器
+  wr_data    正在发送的命令字节（CC/44/BE）
+  wr_cnt     写位计数（0~7）
+  rd_data    正在接收的温度数据
+  rd_cnt     读位计数（0~15）
+  cmd_cnt    命令序号
+  flow_cnt   子状态流转计数
+  st_done    当前子操作完成标志
+  init_done  初始化（存在脉冲检测）完成标志
+
+观察重点：
+  - 初始化：cur_state=1，主机拉低 DQ ~480us → 释放 → 从机拉低（存在脉冲）
+  - 写字节：cur_state=3，DQ 上 8 个写时隙，对应 wr_data（CC→44→BE）
+  - 读时隙：cur_state=7，主机拉低 1us 后释放，从机驱动 DQ，主机 ~15us 采样
+  - 最终结果：仿真末尾 temp_data=0x0191，sign=0
+
+
+五、常见报错及解决
+------------------
+
+1. "Illegal output or inout port connection"
+   → receive_byte 端口应为 input，不能把字面量传给 output。
+
+2. "Failed to find 'us' in hierarchical name"
+   → ModelSim 10.4 vopt 不识别 us 字面量，把 #30us 等换算成 #30000（ns）。
+
+3. "No objects found matching '/tb_ds18b20_dri/clk'"
+   → 加载设计时没加 -voptargs=+acc，信号被优化隐藏。
+     用 vsim -voptargs=+acc 重新加载。
+
+4. "No help for wave deletecursor available"（wave delete 报错）
+   → ModelSim 10.4 的 wave delete 命令有问题，直接删除该命令行，
+     新建仿真时波形窗口本就为空。
